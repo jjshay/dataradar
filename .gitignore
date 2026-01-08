@@ -1,0 +1,30 @@
+# Environment and secrets
+.env
+credentials.json
+token.pickle
+
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output files (user data)
+*_with_dates.xlsx
+
+# Logs
+*.log
