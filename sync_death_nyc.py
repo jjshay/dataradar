@@ -40,13 +40,63 @@ def parse_date_string(date_str, year=None):
     if year is None:
         year = datetime.now().year
 
-    # Clean up the date string
     date_str = date_str.strip()
 
-    # Skip complex date ranges
-    if "-" in date_str and any(c.isalpha() for c in date_str.split("-")[1] if len(date_str.split("-")) > 1):
-        return None
+    # Handle date ranges: "July 18-21" → "July 18"
+    import re
+    range_match = re.match(r'(\w+)\s+(\d+)-\d+', date_str)
+    if range_match:
+        date_str = f"{range_match.group(1)} {range_match.group(2)}"
 
+    # Handle "December 6-8" style
+    range_match2 = re.match(r'(\w+)\s+(\d+)\s*-\s*(\w+\s+)?\d+', date_str)
+    if range_match2:
+        date_str = f"{range_match2.group(1)} {range_match2.group(2)}"
+
+    # Handle relative dates
+    relative_dates = {
+        "first monday in may": (5, 1, 0),      # May, Monday, 1st occurrence
+        "first monday of may": (5, 1, 0),
+        "third saturday of september": (9, 5, 2),  # Sept, Saturday, 3rd
+        "third saturday in september": (9, 5, 2),
+        "first thursday of december": (12, 3, 0),
+        "first tuesday of november": (11, 1, 0),
+        "first tuesday after november 1": (11, 1, 0),
+    }
+
+    lower_str = date_str.lower()
+    for pattern, (month, weekday, occurrence) in relative_dates.items():
+        if pattern in lower_str:
+            # Find nth weekday of month
+            first_day = datetime(year, month, 1)
+            first_weekday = first_day.weekday()
+            days_until = (weekday - first_weekday) % 7
+            target = first_day + timedelta(days=days_until + (7 * occurrence))
+            return target
+
+    # Handle vague dates
+    vague_dates = {
+        "early december": (12, 1),
+        "early january": (1, 1),
+        "early march": (3, 1),
+        "late december": (12, 20),
+        "mid december": (12, 15),
+    }
+    for pattern, (month, day) in vague_dates.items():
+        if pattern in lower_str:
+            return datetime(year, month, day)
+
+    # Handle month-only
+    months = {
+        "january": 1, "february": 2, "march": 3, "april": 4,
+        "may": 5, "june": 6, "july": 7, "august": 8,
+        "september": 9, "october": 10, "november": 11, "december": 12
+    }
+    for month_name, month_num in months.items():
+        if lower_str == month_name:
+            return datetime(year, month_num, 1)
+
+    # Standard formats
     formats = ["%B %d", "%b %d", "%m/%d", "%d %B", "%d %b"]
     for fmt in formats:
         try:

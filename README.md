@@ -181,6 +181,8 @@ DateDriven/
 ├── key_date_finder.py   # Main orchestrator + LLM clients (Shepard Fairey, etc.)
 ├── death_nyc_finder.py  # Pop culture mode for mashup art (Death NYC, etc.)
 ├── calendar_sync.py     # Google Calendar integration
+├── sync_death_nyc.py    # Death NYC calendar sync with smart date parser
+├── ebay_pricing.py      # Automatic pricing based on calendar events
 ├── demo.py              # Demo script for showcasing
 ├── run.py               # CLI entry point
 ├── requirements.txt     # Python dependencies
@@ -198,13 +200,67 @@ Estimated costs per 100 items:
 
 **Total: ~$0.50 per 100 items**
 
+## Automated Pricing (New!)
+
+DateDriven can automatically adjust eBay prices based on upcoming key dates. Prices increase as key dates approach, maximizing revenue during peak collector interest.
+
+### Pricing Rules
+
+| Days Before Event | Price Multiplier |
+|-------------------|------------------|
+| 14+ days | 1.15x (15% markup) |
+| 7-13 days | 1.25x (25% markup) |
+| 3-6 days | 1.35x (35% markup) |
+| 0-2 days | 1.20x (20% markup) |
+| After event | 1.0x (base price) |
+
+### Usage
+
+```python
+from ebay_pricing import run_pricing_automation
+
+# Preview recommendations (dry run)
+run_pricing_automation(
+    inventory_path='inventory.xlsx',
+    days_ahead=30,
+    dry_run=True
+)
+
+# Apply price changes to eBay
+run_pricing_automation(
+    inventory_path='inventory.xlsx',
+    days_ahead=30,
+    dry_run=False
+)
+```
+
+### eBay API Setup
+
+1. Go to [eBay Developer Portal](https://developer.ebay.com/)
+2. Create an application
+3. Generate a User Token with `sell.inventory` scope
+4. Add to `.env`:
+```env
+EBAY_CLIENT_ID=your_client_id
+EBAY_CLIENT_SECRET=your_client_secret
+EBAY_REFRESH_TOKEN=your_refresh_token
+```
+
+### 3DSellers Alternative
+
+If you use 3DSellers, you can set up automation rules directly in their dashboard:
+1. Log into 3DSellers
+2. Go to Automation > Rules
+3. Create catalog-based rules for seasonal pricing
+
 ## Future Enhancements
 
 - [ ] Web UI for non-technical users
-- [ ] eBay API integration for automatic listing scheduling
+- [x] eBay API integration for automatic pricing
 - [ ] More data sources (Wikidata, art databases)
 - [ ] Price history correlation with key dates
 - [ ] Batch processing with rate limiting
+- [ ] Scheduled daily price updates via cron
 
 ## License
 
