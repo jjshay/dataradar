@@ -1,0 +1,55 @@
+[
+  {
+    "item": "Death NYC",
+    "keywords": [
+      "Death NYC",
+      "DEATH NYC"
+    ],
+    "event": "General Premium",
+    "tier": "MINOR",
+    "increase_percent": 5,
+    "start_date": "2026-01-01",
+    "end_date": "2026-12-31",
+    "category": "Art - Pop"
+  },
+  {
+    "item": "Shepard Fairey",
+    "keywords": [
+      "Shepard Fairey",
+      "Obey Giant",
+      "Obey"
+    ],
+    "event": "Obama Hope Anniversary",
+    "tier": "MEDIUM",
+    "increase_percent": 15,
+    "start_date": "2026-01-07",
+    "end_date": "2026-01-19",
+    "category": "Art - Street"
+  },
+  {
+    "item": "Muhammad Ali",
+    "keywords": [
+      "Muhammad Ali",
+      "Ali",
+      "boxing"
+    ],
+    "event": "Muhammad Ali Birthday",
+    "tier": "MEDIUM",
+    "increase_percent": 15,
+    "start_date": "2026-01-07",
+    "end_date": "2026-01-19",
+    "category": "Art - Pop"
+  },
+  {
+    "item": "Matt Maeson",
+    "keywords": [
+      "Matt Maeson"
+    ],
+    "event": "Matt Maeson Birthday",
+    "tier": "MEDIUM",
+    "increase_percent": 15,
+    "start_date": "2026-01-07",
+    "end_date": "2026-01-19",
+    "category": "Music"
+  }
+]
