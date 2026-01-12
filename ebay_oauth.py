@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 eBay OAuth Helper - Generates refresh token for API access
-Run this once to authorize DateDriven to update your eBay listings
+Run this once to authorize DATARADAR to update your eBay listings
 """
 
 import os
@@ -113,7 +113,7 @@ def run_oauth_flow():
     print("=" * 60)
     print(f"\nClient ID: {client_id[:30]}...")
     print(f"Environment: {env_type}")
-    print(f"\nThis will open your browser to authorize DateDriven.")
+    print(f"\nThis will open your browser to authorize DATARADAR.")
     print("You'll need to log into your eBay account and approve access.\n")
 
     input("Press Enter to continue...")

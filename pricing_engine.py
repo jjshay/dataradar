@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DateDriven Pricing Engine
+DATARADAR Pricing Engine
 - AI consensus on event tiers
 - Structured pricing windows with start/end dates
 - Email-ready format for easy extraction
@@ -12,7 +12,7 @@ import requests
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-os.chdir('/Users/johnshay/DateDriven')
+os.chdir('/Users/johnshay/DATARADAR')
 
 # Read .env
 env_vars = {}

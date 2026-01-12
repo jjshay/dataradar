@@ -9,8 +9,7 @@
     "tier": "MINOR",
     "increase_percent": 5,
     "start_date": "2026-01-01",
-    "end_date": "2026-12-31",
-    "category": "Art - Pop"
+    "end_date": "2026-12-31"
   },
   {
     "item": "Shepard Fairey",
@@ -23,8 +22,7 @@
     "tier": "MEDIUM",
     "increase_percent": 15,
     "start_date": "2026-01-07",
-    "end_date": "2026-01-19",
-    "category": "Art - Street"
+    "end_date": "2026-01-19"
   },
   {
     "item": "Muhammad Ali",
@@ -37,8 +35,7 @@
     "tier": "MEDIUM",
     "increase_percent": 15,
     "start_date": "2026-01-07",
-    "end_date": "2026-01-19",
-    "category": "Art - Pop"
+    "end_date": "2026-01-19"
   },
   {
     "item": "Matt Maeson",
@@ -49,7 +46,6 @@
     "tier": "MEDIUM",
     "increase_percent": 15,
     "start_date": "2026-01-07",
-    "end_date": "2026-01-19",
-    "category": "Music"
+    "end_date": "2026-01-19"
   }
 ]

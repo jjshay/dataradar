@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-eBay Pricing Automation for DateDriven
+eBay Pricing Automation for DATARADAR
 Automatically adjusts prices based on upcoming key dates from Google Calendar
 """
 
@@ -194,7 +194,7 @@ class CalendarPricingEngine:
         return self.calendar_service
 
     def get_upcoming_events(self, days_ahead: int = 30):
-        """Get all DateDriven events in the next N days"""
+        """Get all DATARADAR events in the next N days"""
         if not self.calendar_service:
             self.get_calendar_service()
 
@@ -208,7 +208,7 @@ class CalendarPricingEngine:
             timeMax=time_max,
             singleEvents=True,
             orderBy='startTime',
-            q='List:'  # Filter for DateDriven events
+            q='List:'  # Filter for DATARADAR events
         ).execute()
 
         return events_result.get('items', [])
@@ -232,7 +232,7 @@ class CalendarPricingEngine:
         events = self.get_upcoming_events(days_ahead)
         recommendations = []
 
-        print(f"\n Found {len(events)} upcoming DateDriven events")
+        print(f"\n Found {len(events)} upcoming DATARADAR events")
 
         for event in events:
             summary = event.get('summary', '')

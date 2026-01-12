@@ -290,7 +290,7 @@ def process_death_nyc(excel_path: str, output_path: str = None):
 
     # Save results
     if output_path is None:
-        output_path = "/Users/johnshay/DateDriven/DEATH_NYC_with_dates.xlsx"
+        output_path = "/Users/johnshay/DATARADAR/DEATH_NYC_with_dates.xlsx"
 
     death_nyc.to_excel(output_path, index=False)
     print(f"\n✅ Saved results to: {output_path}")

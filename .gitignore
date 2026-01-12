@@ -28,3 +28,15 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
+
+# Runtime data and logs
+pricing_log_*.json
+pricing_data_*.json
+pricing_notification_*.txt
+scan_results_*.json
+token_sheets.pickle
+
+# Personal inventory data
+death_nyc_inventory.csv
+death_nyc_inventory.xlsx

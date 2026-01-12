@@ -11,7 +11,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 import pandas as pd
 
-os.chdir('/Users/johnshay/DateDriven')
+os.chdir('/Users/johnshay/DATARADAR')
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
@@ -113,7 +113,7 @@ def sync_death_nyc():
     print("=" * 60)
 
     service = get_calendar_service()
-    df = pd.read_excel('/Users/johnshay/DateDriven/DEATH_NYC_with_dates.xlsx')
+    df = pd.read_excel('/Users/johnshay/DATARADAR/DEATH_NYC_with_dates.xlsx')
 
     print(f"\n📦 Processing {len(df)} Death NYC items...")
 

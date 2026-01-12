@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DateDriven - Direct eBay Pricing Automation
+DATARADAR - Direct eBay Pricing Automation
 Uses Trading API to update prices on ANY listing
 """
 
@@ -18,7 +18,7 @@ from pricing_engine import (
     PRICING_TIERS, BASE_PRICES
 )
 
-os.chdir('/Users/johnshay/DateDriven')
+os.chdir('/Users/johnshay/DATARADAR')
 
 # Read .env
 env_vars = {}
@@ -206,18 +206,112 @@ def categorize_listing(title):
         return 'default', 100
 
 
+def get_google_creds():
+    """Load Google credentials with auto-refresh"""
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+        if creds and creds.expired and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+                with open('token.pickle', 'wb') as token:
+                    pickle.dump(creds, token)
+            except:
+                pass
+        return creds
+    return None
+
+
 def get_active_pricing_windows():
-    """Get pricing windows that are currently active"""
+    """Get pricing windows from Google Sheet - falls back to JSON if sheet unavailable"""
+    SHEET_ID = '11a-_IWhljPJHeKV8vdke-JiLmm_KCq-bedSceKB0kZI'
+    today = datetime.now().strftime('%Y-%m-%d')
+
+    # Try to read from Google Sheet first
+    try:
+        creds = get_google_creds()
+        if creds:
+            service = build('sheets', 'v4', credentials=creds)
+            result = service.spreadsheets().values().get(
+                spreadsheetId=SHEET_ID,
+                range="'PRICING_RULES'!A4:H100"
+            ).execute()
+
+            rows = result.get('values', [])
+            active = []
+
+            for row in rows:
+                if len(row) >= 7 and row[0] and row[1]:
+                    # Check if active
+                    is_active = row[7].upper() if len(row) > 7 else 'Y'
+                    if is_active != 'Y':
+                        continue
+
+                    # Parse keywords
+                    keywords = [kw.strip() for kw in row[1].split(',')]
+
+                    # Parse dates and check if active
+                    start_date = row[5] if len(row) > 5 else ''
+                    end_date = row[6] if len(row) > 6 else ''
+
+                    if start_date and end_date and start_date <= today <= end_date:
+                        try:
+                            increase = int(row[4]) if row[4] else 10
+                        except:
+                            increase = 10
+
+                        active.append({
+                            'item': row[0],
+                            'keywords': keywords,
+                            'event': row[2] if len(row) > 2 else '',
+                            'tier': row[3] if len(row) > 3 else 'MEDIUM',
+                            'increase_percent': increase,
+                            'start_date': start_date,
+                            'end_date': end_date
+                        })
+
+            print(f"Loaded {len(active)} active rules from Google Sheet")
+
+            # Sync to JSON backup whenever sheet is read successfully
+            try:
+                all_rules = []
+                for row in rows:
+                    if len(row) >= 7 and row[0] and row[1]:
+                        is_active = row[7].upper() if len(row) > 7 else 'Y'
+                        if is_active != 'Y':
+                            continue
+                        keywords = [kw.strip() for kw in row[1].split(',')]
+                        try:
+                            increase = int(row[4]) if row[4] else 10
+                        except:
+                            increase = 10
+                        all_rules.append({
+                            'item': row[0],
+                            'keywords': keywords,
+                            'event': row[2] if len(row) > 2 else '',
+                            'tier': row[3] if len(row) > 3 else 'MEDIUM',
+                            'increase_percent': increase,
+                            'start_date': row[5] if len(row) > 5 else '',
+                            'end_date': row[6] if len(row) > 6 else ''
+                        })
+                with open('pricing_rules.json', 'w') as f:
+                    json.dump(all_rules, f, indent=2)
+            except:
+                pass  # Don't fail if backup sync fails
+
+            return active
+    except Exception as e:
+        print(f"Sheet read error, falling back to JSON: {e}")
+
+    # Fallback to JSON file
     try:
         with open('pricing_rules.json', 'r') as f:
             rules = json.load(f)
     except FileNotFoundError:
-        print("No pricing_rules.json found. Run generate_3dsellers_rules.py first.")
+        print("No pricing_rules.json found.")
         return []
 
-    today = datetime.now().strftime('%Y-%m-%d')
     active = []
-
     for rule in rules:
         start = rule.get('start_date')
         end = rule.get('end_date')

@@ -15,7 +15,7 @@ from pricing_engine import (
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
-os.chdir('/Users/johnshay/DateDriven')
+os.chdir('/Users/johnshay/DATARADAR')
 
 # All inventory items with categories
 INVENTORY = [

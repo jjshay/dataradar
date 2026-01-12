@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DateDriven - Sync Google Sheet to eBay Pricing
+DATARADAR - Sync Google Sheet to eBay Pricing
 Reads pricing rules from a Google Sheet and updates eBay prices
 """
 
@@ -12,7 +12,7 @@ from datetime import datetime
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
-os.chdir('/Users/johnshay/DateDriven')
+os.chdir('/Users/johnshay/DATARADAR')
 
 # Your Google Sheet ID (get from URL after /d/)
 # Example: https://docs.google.com/spreadsheets/d/SHEET_ID_HERE/edit

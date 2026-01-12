@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DateDriven Demo Script
+DATARADAR Demo Script
 Demonstrates the multi-LLM key date discovery system
 """
 
@@ -16,7 +16,7 @@ def demo():
     """Run a demo on sample artworks"""
 
     print("=" * 60)
-    print("🎯 DateDriven Demo - Multi-LLM Key Date Discovery")
+    print("🎯 DATARADAR Demo - Multi-LLM Key Date Discovery")
     print("=" * 60)
     print()
     print("This demo queries 4 LLMs (Claude, GPT-4, Gemini, Grok)")

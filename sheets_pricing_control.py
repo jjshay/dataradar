@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DateDriven - Google Sheets Pricing Control Panel
+DATARADAR - Google Sheets Pricing Control Panel
 Creates and syncs a spreadsheet for managing pricing rules
 """
 
@@ -12,7 +12,7 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-os.chdir('/Users/johnshay/DateDriven')
+os.chdir('/Users/johnshay/DATARADAR')
 
 # Google Sheets scopes
 SCOPES = [
@@ -20,7 +20,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/calendar.readonly'
 ]
 
-SPREADSHEET_NAME = "DateDriven Pricing Control"
+SPREADSHEET_NAME = "DATARADAR Pricing Control"
 
 
 def get_credentials():

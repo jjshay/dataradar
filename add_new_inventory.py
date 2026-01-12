@@ -13,7 +13,7 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-os.chdir('/Users/johnshay/DateDriven')
+os.chdir('/Users/johnshay/DATARADAR')
 load_dotenv()
 
 # New inventory items to process
