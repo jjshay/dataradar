@@ -1,393 +1,141 @@
 #!/usr/bin/env python3
 """
-DATARADAR - Simple Web Interface
+DATARADAR Deals - eBay Deal Finder for Flipping Authenticated Collectibles
+
+A Flask application that searches eBay in real-time to find underpriced
+authenticated items (signed memorabilia, vintage vinyl, space collectibles).
+
+Author: John Shay
+License: MIT
 """
 
 from flask import Flask, render_template, jsonify, request
+from datetime import datetime
 import os
 import json
 import base64
 import requests
-import pickle
-import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta
-from googleapiclient.discovery import build
 
-app = Flask(__name__)
-os.chdir('/Users/johnshay/DATARADAR')
+app = Flask(__name__, template_folder='templates')
 
-# Read .env
-env_vars = {}
-with open('.env', 'r') as f:
-    for line in f:
-        line = line.strip()
-        if line and not line.startswith('#') and '=' in line:
-            key, value = line.split('=', 1)
-            env_vars[key] = value
+# =============================================================================
+# Configuration
+# =============================================================================
 
-EBAY_CLIENT_ID = env_vars.get('EBAY_CLIENT_ID')
-EBAY_CLIENT_SECRET = env_vars.get('EBAY_CLIENT_SECRET')
-EBAY_REFRESH_TOKEN = env_vars.get('EBAY_REFRESH_TOKEN')
+def load_env():
+    """Load environment variables from .env file"""
+    env_vars = {}
+    env_path = os.path.join(os.path.dirname(__file__), '.env')
+    if os.path.exists(env_path):
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    env_vars[key] = value
+    return env_vars
 
-# Google Sheet config
-DATARADAR_SHEET_ID = '11a-_IWhljPJHeKV8vdke-JiLmm_KCq-bedSceKB0kZI'
+ENV = load_env()
 
-# Cache for listings and sheet data
-_cache = {'listings': [], 'last_fetch': None, 'deal_targets': [], 'targets_fetch': None}
+# eBay API Configuration
+EBAY_CLIENT_ID = ENV.get('EBAY_CLIENT_ID', '')
+EBAY_CLIENT_SECRET = ENV.get('EBAY_CLIENT_SECRET', '')
 
+# Default price range
+DEFAULT_MIN_PRICE = 100
+DEFAULT_MAX_PRICE = 700
 
-def get_google_creds():
-    """Load Google credentials with auto-refresh"""
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
-            creds = pickle.load(token)
-        if creds and creds.expired and creds.refresh_token:
-            try:
-                from google.auth.transport.requests import Request
-                creds.refresh(Request())
-                with open('token.pickle', 'wb') as token:
-                    pickle.dump(creds, token)
-            except:
-                pass
-        return creds
-    return None
+# =============================================================================
+# Deal Targets - Categories to search
+# =============================================================================
 
-
-def get_deal_targets():
-    """Read deal targets from Google Sheet - cached for 5 minutes"""
-    # Use cache if fresh
-    if _cache['targets_fetch']:
-        age = (datetime.now() - _cache['targets_fetch']).seconds
-        if age < 300 and _cache['deal_targets']:
-            return _cache['deal_targets']
-
-    try:
-        creds = get_google_creds()
-        if not creds:
-            return DEAL_TARGETS_FALLBACK
-
-        service = build('sheets', 'v4', credentials=creds)
-        result = service.spreadsheets().values().get(
-            spreadsheetId=DATARADAR_SHEET_ID,
-            range="'DATARADAR'!A4:D100"
-        ).execute()
-
-        rows = result.get('values', [])
-        targets = []
-
-        for row in rows:
-            if len(row) >= 3 and row[0] and row[1]:
-                active = row[3].upper() if len(row) > 3 else 'Y'
-                if active == 'Y':
-                    try:
-                        max_price = float(row[2]) if row[2] else 100
-                    except:
-                        max_price = 100
-                    targets.append({
-                        'category': row[0],
-                        'query': row[1],
-                        'max_price': max_price
-                    })
-
-        if targets:
-            _cache['deal_targets'] = targets
-            _cache['targets_fetch'] = datetime.now()
-            return targets
-    except Exception as e:
-        print(f"Sheet read error: {e}")
-
-    return DEAL_TARGETS_FALLBACK
-
-
-# Fallback targets if sheet unavailable
-DEAL_TARGETS_FALLBACK = [
-    {'query': 'Death NYC signed', 'max_price': 50, 'category': 'Art'},
-    {'query': 'Blink 182 signed', 'max_price': 250, 'category': 'Music'},
-    {'query': 'Apollo 11 signed photo', 'max_price': 500, 'category': 'Space'},
-]
-
-# Deal finder targets - what to hunt for and max price to consider a deal
 DEAL_TARGETS = [
-    # Art
-    {'query': 'Death NYC signed', 'max_price': 50, 'category': 'Art'},
-    {'query': 'Death NYC framed', 'max_price': 60, 'category': 'Art'},
-    {'query': 'Shepard Fairey signed print', 'max_price': 150, 'category': 'Art'},
-    {'query': 'Obey Giant signed', 'max_price': 100, 'category': 'Art'},
+    # Art Prints - Mr. Brainwash
+    {
+        'query': 'Mr Brainwash signed print',
+        'min_price': 100,
+        'max_price': 500,
+        'category': 'Mr. Brainwash'
+    },
+    {
+        'query': 'MBW signed print',
+        'min_price': 75,
+        'max_price': 400,
+        'category': 'Mr. Brainwash'
+    },
 
-    # Music - Rock Legends (authenticated)
-    {'query': 'Red Hot Chili Peppers signed', 'max_price': 150, 'category': 'Music'},
-    {'query': 'Chad Smith signed', 'max_price': 100, 'category': 'Music'},
-    {'query': 'Guns N Roses signed', 'max_price': 200, 'category': 'Music'},
-    {'query': 'Duff McKagan signed', 'max_price': 100, 'category': 'Music'},
-    {'query': 'Motley Crue signed', 'max_price': 175, 'category': 'Music'},
-    {'query': 'Tommy Lee signed', 'max_price': 150, 'category': 'Music'},
-    {'query': 'Foo Fighters signed', 'max_price': 200, 'category': 'Music'},
-    {'query': 'Dave Grohl signed', 'max_price': 175, 'category': 'Music'},
+    # Art Prints - Shepard Fairey
+    {
+        'query': 'Shepard Fairey signed print',
+        'min_price': 75,
+        'max_price': 400,
+        'category': 'Shepard Fairey'
+    },
+    {
+        'query': 'Obey Giant signed',
+        'min_price': 50,
+        'max_price': 300,
+        'category': 'Shepard Fairey'
+    },
 
-    # Pop Punk - Core bands
-    {'query': 'Blink 182 signed', 'max_price': 250, 'category': 'Music'},
-    {'query': 'Green Day signed', 'max_price': 250, 'category': 'Music'},
-    {'query': 'Sum 41 signed', 'max_price': 150, 'category': 'Music'},
-    {'query': 'Good Charlotte signed', 'max_price': 125, 'category': 'Music'},
-    {'query': 'Simple Plan signed', 'max_price': 100, 'category': 'Music'},
-    {'query': 'New Found Glory signed', 'max_price': 125, 'category': 'Music'},
-    {'query': 'Fall Out Boy signed', 'max_price': 175, 'category': 'Music'},
-    {'query': 'My Chemical Romance signed', 'max_price': 200, 'category': 'Music'},
-    {'query': 'Paramore signed', 'max_price': 175, 'category': 'Music'},
-    {'query': 'All Time Low signed', 'max_price': 125, 'category': 'Music'},
-    {'query': 'Offspring signed', 'max_price': 150, 'category': 'Music'},
-    {'query': 'Yellowcard signed', 'max_price': 125, 'category': 'Music'},
-    {'query': 'Taking Back Sunday signed', 'max_price': 125, 'category': 'Music'},
-    {'query': 'The Used signed', 'max_price': 100, 'category': 'Music'},
-    {'query': 'A Day To Remember signed', 'max_price': 125, 'category': 'Music'},
-    {'query': 'Brand New band signed', 'max_price': 150, 'category': 'Music'},
-    {'query': 'NOFX signed', 'max_price': 125, 'category': 'Music'},
-    {'query': 'Bad Religion signed', 'max_price': 125, 'category': 'Music'},
-    {'query': 'Rise Against signed', 'max_price': 125, 'category': 'Music'},
-    {'query': 'Jimmy Eat World signed', 'max_price': 125, 'category': 'Music'},
-    {'query': 'Dashboard Confessional signed', 'max_price': 100, 'category': 'Music'},
-    {'query': 'Panic At The Disco signed', 'max_price': 150, 'category': 'Music'},
-    {'query': 'Pierce The Veil signed', 'max_price': 125, 'category': 'Music'},
-    {'query': 'Sleeping With Sirens signed', 'max_price': 100, 'category': 'Music'},
-    {'query': 'Mayday Parade signed', 'max_price': 100, 'category': 'Music'},
+    # Space Memorabilia - with COA
+    {
+        'query': 'Neil Armstrong signed photo COA',
+        'min_price': 500,
+        'max_price': 5000,
+        'category': 'Space'
+    },
+    {
+        'query': 'Buzz Aldrin signed photo COA',
+        'min_price': 100,
+        'max_price': 800,
+        'category': 'Space'
+    },
+    {
+        'query': 'astronaut signed COA authenticated',
+        'min_price': 100,
+        'max_price': 1000,
+        'category': 'Space'
+    },
 
-    # Other artists
-    {'query': 'Taylor Swift signed', 'max_price': 200, 'category': 'Music'},
-    {'query': 'Coldplay signed', 'max_price': 200, 'category': 'Music'},
-    {'query': 'Ed Sheeran signed', 'max_price': 150, 'category': 'Music'},
-    {'query': 'Beatles autograph signed', 'max_price': 500, 'category': 'Music'},
+    # Signed Pickguards - with COA
+    {
+        'query': 'signed pickguard COA',
+        'min_price': 75,
+        'max_price': 500,
+        'category': 'Pickguard'
+    },
+    {
+        'query': 'autographed pickguard COA',
+        'min_price': 75,
+        'max_price': 500,
+        'category': 'Pickguard'
+    },
 
-    # Authenticated items (JSA/BAS/PSA)
-    {'query': 'signed vinyl JSA COA', 'max_price': 150, 'category': 'Music'},
-    {'query': 'signed vinyl BAS COA', 'max_price': 150, 'category': 'Music'},
-    {'query': 'signed album PSA', 'max_price': 150, 'category': 'Music'},
-    {'query': 'signed guitar autographed COA', 'max_price': 300, 'category': 'Music'},
-    {'query': 'signed concert poster', 'max_price': 75, 'category': 'Music'},
-
-    # Space Memorabilia
-    {'query': 'Apollo 11 signed photo', 'max_price': 500, 'category': 'Space'},
-    {'query': 'Neil Armstrong signed', 'max_price': 750, 'category': 'Space'},
-    {'query': 'Buzz Aldrin signed photo', 'max_price': 300, 'category': 'Space'},
-    {'query': 'Michael Collins signed', 'max_price': 250, 'category': 'Space'},
-    {'query': 'Apollo astronaut signed', 'max_price': 400, 'category': 'Space'},
+    # Signed Vinyl - with COA
+    {
+        'query': 'signed vinyl COA authenticated',
+        'min_price': 75,
+        'max_price': 500,
+        'category': 'Vinyl'
+    },
+    {
+        'query': 'Taylor Swift signed vinyl COA',
+        'min_price': 100,
+        'max_price': 600,
+        'category': 'Vinyl'
+    },
 ]
 
-
-def get_access_token():
-    """Get eBay OAuth token"""
-    credentials = f"{EBAY_CLIENT_ID}:{EBAY_CLIENT_SECRET}"
-    encoded_creds = base64.b64encode(credentials.encode()).decode()
-
-    response = requests.post(
-        'https://api.ebay.com/identity/v1/oauth2/token',
-        headers={
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': f'Basic {encoded_creds}'
-        },
-        data={
-            'grant_type': 'refresh_token',
-            'refresh_token': EBAY_REFRESH_TOKEN,
-            'scope': 'https://api.ebay.com/oauth/api_scope'
-        }
-    )
-    return response.json().get('access_token')
-
-
-def fetch_listings(force=False):
-    """Fetch all active listings from eBay"""
-    # Use cache if fresh (5 min)
-    if not force and _cache['last_fetch']:
-        age = (datetime.now() - _cache['last_fetch']).seconds
-        if age < 300 and _cache['listings']:
-            return _cache['listings']
-
-    token = get_access_token()
-    all_listings = []
-    page = 1
-
-    while page <= 5:
-        xml_request = f"""<?xml version="1.0" encoding="utf-8"?>
-<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-    <RequesterCredentials>
-        <eBayAuthToken>{token}</eBayAuthToken>
-    </RequesterCredentials>
-    <ActiveList>
-        <Include>true</Include>
-        <Pagination>
-            <EntriesPerPage>100</EntriesPerPage>
-            <PageNumber>{page}</PageNumber>
-        </Pagination>
-    </ActiveList>
-    <DetailLevel>ReturnAll</DetailLevel>
-</GetMyeBaySellingRequest>"""
-
-        headers = {
-            'X-EBAY-API-SITEID': '0',
-            'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
-            'X-EBAY-API-CALL-NAME': 'GetMyeBaySelling',
-            'X-EBAY-API-IAF-TOKEN': token,
-            'Content-Type': 'text/xml'
-        }
-
-        resp = requests.post("https://api.ebay.com/ws/api.dll", headers=headers, data=xml_request)
-        root = ET.fromstring(resp.text)
-        ns = {'ebay': 'urn:ebay:apis:eBLBaseComponents'}
-
-        items = root.findall('.//ebay:ActiveList/ebay:ItemArray/ebay:Item', ns)
-        if not items:
-            break
-
-        for item in items:
-            item_id = item.find('ebay:ItemID', ns)
-            title = item.find('ebay:Title', ns)
-            price = item.find('.//ebay:CurrentPrice', ns)
-            pic = item.find('.//ebay:PictureDetails/ebay:GalleryURL', ns)
-
-            if item_id is not None:
-                all_listings.append({
-                    'id': item_id.text,
-                    'title': title.text if title is not None else 'Unknown',
-                    'price': float(price.text) if price is not None else 0,
-                    'image': pic.text if pic is not None else '',
-                    'url': f"https://www.ebay.com/itm/{item_id.text}"
-                })
-
-        page += 1
-
-    _cache['listings'] = all_listings
-    _cache['last_fetch'] = datetime.now()
-    return all_listings
-
-
-def get_active_rules():
-    """Get active pricing rules from Google Sheet"""
-    today = datetime.now().strftime('%Y-%m-%d')
-
-    try:
-        creds = get_google_creds()
-        if creds:
-            service = build('sheets', 'v4', credentials=creds)
-            result = service.spreadsheets().values().get(
-                spreadsheetId=DATARADAR_SHEET_ID,
-                range="'PRICING_RULES'!A4:H100"
-            ).execute()
-
-            rows = result.get('values', [])
-            active = []
-
-            for row in rows:
-                if len(row) >= 7 and row[0] and row[1]:
-                    is_active = row[7].upper() if len(row) > 7 else 'Y'
-                    if is_active != 'Y':
-                        continue
-
-                    start_date = row[5] if len(row) > 5 else ''
-                    end_date = row[6] if len(row) > 6 else ''
-
-                    if start_date and end_date and start_date <= today <= end_date:
-                        active.append({
-                            'item': row[0],
-                            'event': row[2] if len(row) > 2 else '',
-                            'tier': row[3] if len(row) > 3 else 'MEDIUM',
-                            'increase_percent': int(row[4]) if len(row) > 4 and row[4] else 10,
-                            'start_date': start_date,
-                            'end_date': end_date
-                        })
-
-            return active
-    except:
-        pass
-
-    # Fallback to JSON
-    try:
-        with open('pricing_rules.json', 'r') as f:
-            rules = json.load(f)
-        return [r for r in rules if r.get('start_date', '') <= today <= r.get('end_date', '')]
-    except:
-        return []
-
-
-def get_alerts():
-    """Get items needing attention"""
-    # For now, return count of items that failed last update
-    try:
-        logs = sorted([f for f in os.listdir('.') if f.startswith('pricing_log_')], reverse=True)
-        if logs:
-            with open(logs[0], 'r') as f:
-                log = json.load(f)
-            # Items that might have issues (on sale, etc)
-            return 7  # From last run
-    except:
-        pass
-    return 0
-
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-
-@app.route('/api/stats')
-def stats():
-    listings = fetch_listings()
-    rules = get_active_rules()
-    alerts = get_alerts()
-
-    return jsonify({
-        'listings': len(listings),
-        'rules': len(rules),
-        'alerts': alerts
-    })
-
-
-@app.route('/api/search')
-def search():
-    query = request.args.get('q', '').lower().strip()
-    listings = fetch_listings()
-
-    if not query:
-        return jsonify(listings[:20])
-
-    results = [l for l in listings if query in l['title'].lower()]
-    return jsonify(results)
-
-
-@app.route('/api/run-pricing', methods=['POST'])
-def run_pricing():
-    """Run the pricing update"""
-    import subprocess
-    result = subprocess.run(
-        ['python3', 'ebay_auto_pricing.py', '--live'],
-        capture_output=True,
-        text=True,
-        cwd='/Users/johnshay/DATARADAR'
-    )
-
-    # Parse results
-    output = result.stdout
-    success = output.count('✅')
-    failed = output.count('❌')
-
-    # Clear cache to refresh listings
-    _cache['last_fetch'] = None
-
-    return jsonify({
-        'success': True,
-        'updated': success,
-        'failed': failed,
-        'output': output[-2000:] if len(output) > 2000 else output
-    })
-
-
-@app.route('/api/refresh')
-def refresh():
-    """Force refresh listings from eBay"""
-    listings = fetch_listings(force=True)
-    return jsonify({'success': True, 'count': len(listings)})
-
+# =============================================================================
+# eBay Browse API
+# =============================================================================
 
 def get_browse_token():
-    """Get client credentials token for Browse API (searching eBay)"""
+    """Get client credentials token for eBay Browse API"""
+    if not EBAY_CLIENT_ID or not EBAY_CLIENT_SECRET:
+        return None
+
     credentials = f"{EBAY_CLIENT_ID}:{EBAY_CLIENT_SECRET}"
     encoded_creds = base64.b64encode(credentials.encode()).decode()
 
@@ -402,12 +150,28 @@ def get_browse_token():
             'scope': 'https://api.ebay.com/oauth/api_scope'
         }
     )
-    return response.json().get('access_token')
+
+    if response.status_code == 200:
+        return response.json().get('access_token')
+    return None
 
 
-def search_ebay_deals(query, max_price, limit=10):
-    """Search eBay for deals using Browse API"""
+def search_ebay(query, max_price, min_price=0, limit=20):
+    """
+    Search eBay for items using Browse API
+
+    Args:
+        query: Search keywords
+        max_price: Maximum price filter
+        min_price: Minimum price filter (helps filter fakes)
+        limit: Number of results to return
+
+    Returns:
+        List of item dictionaries
+    """
     token = get_browse_token()
+    if not token:
+        return []
 
     headers = {
         'Authorization': f'Bearer {token}',
@@ -415,33 +179,38 @@ def search_ebay_deals(query, max_price, limit=10):
         'Content-Type': 'application/json'
     }
 
-    # Search with price filter
+    # Build price filter
+    if min_price > 0:
+        price_filter = f'price:[{min_price}..{max_price}]'
+    else:
+        price_filter = f'price:[..{max_price}]'
+
     params = {
         'q': query,
-        'filter': f'price:[..{max_price}],priceCurrency:USD,buyingOptions:{{FIXED_PRICE|AUCTION}}',
+        'filter': f'{price_filter},priceCurrency:USD,buyingOptions:{{FIXED_PRICE|AUCTION}}',
         'sort': 'price',
         'limit': limit
     }
 
     try:
-        resp = requests.get(
+        response = requests.get(
             'https://api.ebay.com/buy/browse/v1/item_summary/search',
             headers=headers,
             params=params
         )
 
-        if resp.status_code != 200:
+        if response.status_code != 200:
             return []
 
-        data = resp.json()
+        data = response.json()
         items = data.get('itemSummaries', [])
 
+        # Transform to simplified format
         deals = []
         for item in items:
             price_info = item.get('price', {})
             price = float(price_info.get('value', 0))
 
-            # Skip if price is 0 or too high
             if price <= 0 or price > max_price:
                 continue
 
@@ -453,59 +222,163 @@ def search_ebay_deals(query, max_price, limit=10):
                 'url': item.get('itemWebUrl', ''),
                 'condition': item.get('condition', 'Unknown'),
                 'seller': item.get('seller', {}).get('username', 'Unknown'),
-                'buying_option': item.get('buyingOptions', [''])[0] if item.get('buyingOptions') else ''
+                'buying_option': item.get('buyingOptions', [''])[0] if item.get('buyingOptions') else '',
+                'location': item.get('itemLocation', {}).get('country', '')
             })
 
         return deals
+
     except Exception as e:
-        print(f"Deal search error: {e}")
+        print(f"Search error: {e}")
         return []
 
+# =============================================================================
+# Watchlist Management
+# =============================================================================
 
-@app.route('/api/deals')
-def find_deals():
-    """Find deals across all target categories - reads from Google Sheet"""
-    category_filter = request.args.get('category', '').lower()
-    query_filter = request.args.get('q', '').lower()
-
-    all_deals = []
-    targets = get_deal_targets()  # Read from Google Sheet
-
-    for target in targets:
-        # Filter by category if specified
-        if category_filter and category_filter not in target['category'].lower():
-            continue
-
-        # Filter by query if specified
-        if query_filter and query_filter not in target['query'].lower():
-            continue
-
-        deals = search_ebay_deals(target['query'], target['max_price'], limit=5)
-
-        for deal in deals:
-            deal['search_query'] = target['query']
-            deal['max_deal_price'] = target['max_price']
-            deal['category'] = target['category']
-            all_deals.append(deal)
-
-    # Sort by price (lowest first)
-    all_deals.sort(key=lambda x: x['price'])
-
-    return jsonify(all_deals)
+WATCHLIST_FILE = os.path.join(os.path.dirname(__file__), 'watchlist.json')
 
 
-@app.route('/api/deal-search')
-def deal_search():
-    """Custom deal search with user query"""
+def load_watchlist():
+    """Load watchlist from JSON file"""
+    try:
+        if os.path.exists(WATCHLIST_FILE):
+            with open(WATCHLIST_FILE, 'r') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return []
+
+
+def save_watchlist(items):
+    """Save watchlist to JSON file"""
+    with open(WATCHLIST_FILE, 'w') as f:
+        json.dump(items, f, indent=2)
+
+# =============================================================================
+# Flask Routes
+# =============================================================================
+
+@app.route('/')
+def index():
+    """Render main dashboard"""
+    return render_template('index.html')
+
+
+@app.route('/api/stats')
+def get_stats():
+    """Get deal target statistics"""
+    return jsonify({
+        'targets': len(DEAL_TARGETS),
+        'categories': len(set(t['category'] for t in DEAL_TARGETS))
+    })
+
+
+@app.route('/api/search')
+def search():
+    """
+    Search eBay with custom query and price filters
+
+    Query params:
+        q: Search query (required)
+        min_price: Minimum price (default: 100)
+        max_price: Maximum price (default: 700)
+    """
     query = request.args.get('q', '')
-    max_price = float(request.args.get('max_price', 100))
+    min_price = float(request.args.get('min_price', DEFAULT_MIN_PRICE))
+    max_price = float(request.args.get('max_price', DEFAULT_MAX_PRICE))
 
     if not query:
         return jsonify([])
 
-    deals = search_ebay_deals(query, max_price, limit=20)
+    deals = search_ebay(query, max_price, min_price, limit=20)
     return jsonify(deals)
 
 
+@app.route('/api/comps')
+def get_comps():
+    """Get deals organized by category from all targets"""
+    results = {}
+
+    # Group targets by category
+    by_category = {}
+    for target in DEAL_TARGETS:
+        cat = target['category']
+        if cat not in by_category:
+            by_category[cat] = []
+        by_category[cat].append(target)
+
+    # Search each category
+    for cat, targets in by_category.items():
+        results[cat] = []
+        for target in targets[:2]:  # Limit searches per category
+            min_price = target.get('min_price', 0)
+            max_price = target.get('max_price', 500)
+            deals = search_ebay(target['query'], max_price, min_price, limit=3)
+
+            for deal in deals:
+                deal['search_query'] = target['query']
+                deal['min_deal_price'] = min_price
+                deal['max_deal_price'] = max_price
+                results[cat].append(deal)
+
+    return jsonify(results)
+
+
+@app.route('/api/watchlist')
+def get_watchlist():
+    """Get all watchlist items"""
+    items = load_watchlist()
+    return jsonify(items)
+
+
+@app.route('/api/watchlist/add', methods=['POST'])
+def add_to_watchlist():
+    """Add item to watchlist"""
+    data = request.get_json()
+
+    item = {
+        'id': data.get('id', str(datetime.now().timestamp())),
+        'title': data.get('title', ''),
+        'price': data.get('price', 0),
+        'url': data.get('url', ''),
+        'image': data.get('image', ''),
+        'notes': data.get('notes', ''),
+        'added': datetime.now().isoformat(),
+        'status': 'watching'
+    }
+
+    items = load_watchlist()
+
+    # Check for duplicates
+    if not any(i['id'] == item['id'] for i in items):
+        items.append(item)
+        save_watchlist(items)
+
+    return jsonify({'success': True, 'count': len(items)})
+
+
+@app.route('/api/watchlist/remove', methods=['POST'])
+def remove_from_watchlist():
+    """Remove item from watchlist"""
+    data = request.get_json()
+    item_id = data.get('id', '')
+
+    items = load_watchlist()
+    items = [i for i in items if i['id'] != item_id]
+    save_watchlist(items)
+
+    return jsonify({'success': True, 'count': len(items)})
+
+
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({'status': 'ok', 'app': 'dataradar-deals'})
+
+# =============================================================================
+# Main
+# =============================================================================
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5050)
+    app.run(debug=True, port=5051)

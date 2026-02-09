@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>DATARADAR - Deals</title>
+    <style>
+        :root {
+            --bg: #000;
+            --card: #1a1a1a;
+            --text: #fff;
+            --dim: #888;
+            --accent: #0a84ff;
+            --green: #34c759;
+            --orange: #ff9f0a;
+            --red: #ff453a;
+            --border: #333;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .app {
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+
+        .header {
+            padding: 60px 24px 24px;
+        }
+
+        .header h1 { font-size: 34px; font-weight: 700; letter-spacing: -1px; }
+        .header .subtitle { font-size: 15px; color: var(--dim); margin-top: 8px; }
+
+        .section { padding: 0 24px; margin-bottom: 32px; }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .section-title { font-size: 22px; font-weight: 600; }
+
+        .section-action {
+            font-size: 15px;
+            color: var(--accent);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px 0;
+        }
+
+        /* Stats - simplified inline */
+        .stats-inline {
+            display: flex;
+            gap: 24px;
+            padding: 0 24px;
+            margin-bottom: 32px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .stat-item .value { font-size: 32px; font-weight: 700; color: var(--green); }
+        .stat-item .label { font-size: 14px; color: var(--dim); }
+
+        /* Chips - larger, more spaced */
+        .chips {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 4px 0 16px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .chips::-webkit-scrollbar { display: none; }
+
+        .chip {
+            flex-shrink: 0;
+            padding: 12px 20px;
+            background: transparent;
+            border: 1.5px solid var(--border);
+            border-radius: 24px;
+            color: var(--text);
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .chip:active { transform: scale(0.96); }
+        .chip.active { background: var(--accent); border-color: var(--accent); }
+
+        /* Price Slider - minimal */
+        .price-slider-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .price-slider-row label {
+            font-size: 14px;
+            color: var(--dim);
+            white-space: nowrap;
+        }
+
+        .price-slider-row .slider-wrap {
+            flex: 1;
+            position: relative;
+            height: 44px;
+        }
+
+        .slider-track {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .slider-range {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 4px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        .slider-wrap input[type="range"] {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            pointer-events: none;
+        }
+
+        .slider-wrap input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .price-display {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--green);
+            white-space: nowrap;
+            min-width: 100px;
+            text-align: right;
+        }
+
+        /* Search - clean */
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--card);
+            border-radius: 16px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+        }
+
+        .search-box svg {
+            width: 22px;
+            height: 22px;
+            color: var(--dim);
+            flex-shrink: 0;
+        }
+
+        .search-box input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 17px;
+            outline: none;
+        }
+
+        .search-box input::placeholder { color: var(--dim); }
+
+        .search-box button {
+            padding: 10px 20px;
+            background: var(--accent);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Quick tags */
+        .quick-tags {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .quick-tag {
+            padding: 10px 16px;
+            background: var(--card);
+            border: none;
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .quick-tag:active { opacity: 0.7; }
+
+        /* Trending Grid - simpler */
+        .trending-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .trending-item {
+            background: var(--card);
+            border: none;
+            border-radius: 16px;
+            padding: 20px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .trending-item:active { opacity: 0.7; }
+
+        .trending-icon { font-size: 32px; }
+
+        .trending-label {
+            font-size: 12px;
+            color: var(--dim);
+            font-weight: 500;
+        }
+
+        /* Item rows - clean */
+        .item-row {
+            display: flex;
+            padding: 16px 0;
+            gap: 16px;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .item-row:last-child { border-bottom: none; }
+        .item-row:active { opacity: 0.7; }
+
+        .item-image {
+            width: 72px;
+            height: 72px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: var(--card);
+            flex-shrink: 0;
+        }
+
+        .item-info { flex: 1; min-width: 0; }
+
+        .item-label {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .item-title {
+            font-size: 15px;
+            font-weight: 500;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .item-meta {
+            font-size: 13px;
+            color: var(--dim);
+            margin-top: 4px;
+        }
+
+        .item-price {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .item-price .amount {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--green);
+        }
+
+        .item-price .type {
+            font-size: 12px;
+            color: var(--dim);
+        }
+
+        /* Card container */
+        .card {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 4px 20px;
+        }
+
+        .delete-btn {
+            width: 36px;
+            height: 36px;
+            background: none;
+            border: none;
+            color: var(--red);
+            font-size: 24px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        /* Item Detail Modal */
+        .detail-image {
+            width: 100%;
+            max-height: 250px;
+            object-fit: contain;
+            border-radius: 12px;
+            background: var(--bg);
+            margin-bottom: 16px;
+        }
+
+        .detail-category {
+            font-size: 11px;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .detail-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            line-height: 1.3;
+        }
+
+        .detail-price {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--green);
+            margin-bottom: 8px;
+        }
+
+        .detail-meta {
+            font-size: 13px;
+            color: var(--dim);
+            margin-bottom: 20px;
+        }
+
+        .detail-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .detail-actions .action-btn {
+            flex: 1;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .btn:active { opacity: 0.8; }
+        .btn.primary { background: var(--accent); color: #fff; }
+        .btn.secondary { background: var(--card); color: var(--text); }
+        .btn:disabled { opacity: 0.4; }
+
+        /* Artist Group */
+        .artist-group { margin-bottom: 20px; }
+
+        .artist-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0 4px;
+            margin-bottom: 10px;
+        }
+
+        /* Deal Item */
+        .deal-item {
+            display: flex;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            text-decoration: none;
+            color: inherit;
+            gap: 12px;
+        }
+        .deal-item:last-child { border-bottom: none; }
+        .deal-item:active { background: #2c2c2e; }
+
+        .deal-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #2c2c2e;
+            flex-shrink: 0;
+        }
+
+        .deal-info { flex: 1; min-width: 0; }
+
+        .deal-query {
+            font-size: 10px;
+            color: var(--orange);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .deal-title {
+            font-size: 14px;
+            font-weight: 500;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin: 3px 0;
+        }
+
+        .deal-meta { font-size: 11px; color: var(--dim); }
+
+        .deal-price { text-align: right; flex-shrink: 0; }
+        .deal-price .current { font-size: 17px; font-weight: 600; color: var(--green); }
+        .deal-price .max { font-size: 10px; color: var(--dim); }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 9px;
+            font-weight: 600;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .badge.auction { background: var(--orange); color: #000; }
+        .badge.buy-now { background: var(--green); color: #000; }
+
+        /* Watchlist Item */
+        .watch-item {
+            display: flex;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+            align-items: center;
+        }
+        .watch-item:last-child { border-bottom: none; }
+
+        .watch-info { flex: 1; min-width: 0; }
+
+        .watch-title {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .watch-notes { font-size: 12px; color: var(--dim); margin-top: 2px; }
+
+        .watch-status {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .watch-status.watching { background: var(--accent); }
+        .watch-status.ended { background: var(--red); }
+        .watch-status.purchased { background: var(--green); color: #000; }
+
+        .watch-price { font-size: 16px; font-weight: 600; color: var(--green); }
+
+        .watch-actions { display: flex; gap: 8px; }
+
+        .watch-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            background: var(--bg);
+            color: var(--dim);
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .watch-btn:active { background: #2c2c2e; }
+        .watch-btn.delete { color: var(--red); }
+
+        /* Pages */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* Bottom Nav - minimal */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: space-around;
+            padding: 16px 0 32px;
+            border-top: 1px solid var(--border);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            color: var(--dim);
+            background: none;
+            border: none;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 4px 20px;
+        }
+
+        .nav-item svg { width: 26px; height: 26px; }
+        .nav-item.active { color: #fff; }
+
+        .empty { text-align: center; padding: 40px 20px; color: var(--dim); }
+        .loading { text-align: center; padding: 30px; color: var(--dim); }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .toast {
+            position: fixed;
+            top: 60px;
+            left: 16px;
+            right: 16px;
+            background: var(--card);
+            padding: 14px 20px;
+            border-radius: 14px;
+            text-align: center;
+            transform: translateY(-120%);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 2000;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+
+        .modal {
+            background: var(--card);
+            width: 100%;
+            max-width: 500px;
+            border-radius: 20px 20px 0 0;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-header h2 { font-size: 18px; }
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--dim);
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        .modal-body { padding: 16px; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-label {
+            display: block;
+            font-size: 12px;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--bg);
+            border: none;
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 15px;
+            outline: none;
+        }
+        .form-input::placeholder { color: var(--dim); }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Home Page -->
+        <div class="page active" id="page-home">
+            <div class="header">
+                <h1>Deals</h1>
+                <div class="subtitle">Find items to flip</div>
+            </div>
+
+            <!-- Price Slider -->
+            <div class="section">
+                <div class="price-slider-row">
+                    <label>Price</label>
+                    <div class="slider-wrap">
+                        <div class="slider-track"></div>
+                        <div class="slider-range" id="home-slider-range"></div>
+                        <input type="range" id="home-min-price" min="0" max="2000" value="100" step="10">
+                        <input type="range" id="home-max-price" min="0" max="2000" value="700" step="10">
+                    </div>
+                    <div class="price-display" id="home-price-display">$100 - $700</div>
+                </div>
+            </div>
+
+            <!-- Quick Categories -->
+            <div class="section">
+                <div class="trending-grid">
+                    <button class="trending-item" onclick="goSearchFor('Mr Brainwash signed')">
+                        <span class="trending-icon">🎨</span>
+                        <span class="trending-label">MBW</span>
+                    </button>
+                    <button class="trending-item" onclick="goSearchFor('Shepard Fairey signed')">
+                        <span class="trending-icon">✊</span>
+                        <span class="trending-label">Fairey</span>
+                    </button>
+                    <button class="trending-item" onclick="goSearchFor('signed pickguard COA')">
+                        <span class="trending-icon">🎸</span>
+                        <span class="trending-label">Pickguards</span>
+                    </button>
+                    <button class="trending-item" onclick="goSearchFor('signed vinyl COA')">
+                        <span class="trending-icon">💿</span>
+                        <span class="trending-label">Vinyl</span>
+                    </button>
+                    <button class="trending-item" onclick="goSearchFor('astronaut signed COA')">
+                        <span class="trending-icon">🚀</span>
+                        <span class="trending-label">Space</span>
+                    </button>
+                    <button class="trending-item" onclick="goSearchFor('Taylor Swift signed COA')">
+                        <span class="trending-icon">⭐</span>
+                        <span class="trending-label">T Swift</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hot Items -->
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Hot Now</h2>
+                    <button class="section-action" onclick="refreshHome()">Refresh</button>
+                </div>
+                <div id="home-hot">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+
+            <!-- Watchlist -->
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Watchlist</h2>
+                </div>
+                <div id="home-watchlist">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Page -->
+        <div class="page" id="page-comps">
+            <div class="header">
+                <h1>Search</h1>
+                <div class="subtitle">Search eBay live</div>
+            </div>
+
+            <div class="section">
+                <!-- Search Box -->
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input type="text" id="search-input" placeholder="Search...">
+                    <button id="search-btn" onclick="doSearch()">Go</button>
+                </div>
+
+                <!-- Quick Tags -->
+                <div class="quick-tags">
+                    <button class="quick-tag" onclick="quickSearch('Mr Brainwash signed')">MBW</button>
+                    <button class="quick-tag" onclick="quickSearch('Shepard Fairey signed')">Fairey</button>
+                    <button class="quick-tag" onclick="quickSearch('signed pickguard COA')">Pickguards</button>
+                    <button class="quick-tag" onclick="quickSearch('signed vinyl COA')">Vinyl</button>
+                    <button class="quick-tag" onclick="quickSearch('astronaut signed COA')">Space</button>
+                </div>
+
+                <!-- Price Slider -->
+                <div class="price-slider-row">
+                    <label>Price</label>
+                    <div class="slider-wrap">
+                        <div class="slider-track"></div>
+                        <div class="slider-range" id="slider-range"></div>
+                        <input type="range" id="min-price" min="0" max="2000" value="100" step="10">
+                        <input type="range" id="max-price" min="0" max="2000" value="700" step="10">
+                    </div>
+                    <div class="price-display" id="price-display">$100 - $700</div>
+                </div>
+
+                <!-- Results -->
+                <div id="comps-results">
+                    <div class="empty">Search for items above</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Watchlist Page -->
+        <div class="page" id="page-watchlist">
+            <div class="header">
+                <h1>Watchlist</h1>
+                <div class="subtitle">Items you're tracking</div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">My Items</h2>
+                    <button class="section-action" onclick="showAddWatchModal()">+ Add</button>
+                </div>
+
+                <div id="watchlist-results">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-page="home">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
+        </button>
+        <button class="nav-item" data-page="comps">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            Search
+        </button>
+        <button class="nav-item" data-page="watchlist">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            Watchlist
+        </button>
+    </nav>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- Item Detail Modal -->
+    <div class="modal-overlay" id="item-detail-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Item Details</h2>
+                <button class="modal-close" onclick="closeItemDetail()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="item-detail-content">
+                    <img id="detail-image" class="detail-image" src="" onerror="this.style.display='none'">
+                    <div class="detail-category" id="detail-category"></div>
+                    <h3 class="detail-title" id="detail-title"></h3>
+                    <div class="detail-price" id="detail-price"></div>
+                    <div class="detail-meta" id="detail-meta"></div>
+                    <div class="detail-actions">
+                        <button class="action-btn secondary" onclick="closeItemDetail()">Back to Dashboard</button>
+                        <a id="detail-ebay-link" href="" target="_blank" class="action-btn primary">View on eBay</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add to Watchlist Modal -->
+    <div class="modal-overlay" id="add-watch-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Add to Watchlist</h2>
+                <button class="modal-close" onclick="closeAddWatchModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">eBay URL or Item ID</label>
+                    <input type="text" id="watch-url" class="form-input" placeholder="https://ebay.com/itm/...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" id="watch-title" class="form-input" placeholder="Item description">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Price</label>
+                    <input type="number" id="watch-price" class="form-input" placeholder="0.00" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <input type="text" id="watch-notes" class="form-input" placeholder="Why watching?">
+                </div>
+                <button class="action-btn primary" onclick="addToWatchlist()">Add to Watchlist</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentCategory = 'all';
+        let currentStatus = 'all';
+        let watchlistItems = [];
+        let minPrice = 100;
+        let maxPrice = 700;
+        let homeMinPrice = 100;
+        let homeMaxPrice = 700;
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            initHomeSliders();
+            loadHome();
+            initSliders();
+        });
+
+        // Home price sliders
+        function initHomeSliders() {
+            const minSlider = document.getElementById('home-min-price');
+            const maxSlider = document.getElementById('home-max-price');
+
+            let debounceTimer;
+
+            minSlider.addEventListener('input', () => {
+                homeMinPrice = parseInt(minSlider.value);
+                if (homeMinPrice >= homeMaxPrice) {
+                    homeMinPrice = homeMaxPrice - 10;
+                    minSlider.value = homeMinPrice;
+                }
+                updateHomeSliderUI();
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => loadHotItems(), 500);
+            });
+
+            maxSlider.addEventListener('input', () => {
+                homeMaxPrice = parseInt(maxSlider.value);
+                if (homeMaxPrice <= homeMinPrice) {
+                    homeMaxPrice = homeMinPrice + 10;
+                    maxSlider.value = homeMaxPrice;
+                }
+                updateHomeSliderUI();
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => loadHotItems(), 500);
+            });
+
+            updateHomeSliderUI();
+        }
+
+        function updateHomeSliderUI() {
+            const range = document.getElementById('home-slider-range');
+            const display = document.getElementById('home-price-display');
+
+            const percent1 = (homeMinPrice / 2000) * 100;
+            const percent2 = (homeMaxPrice / 2000) * 100;
+
+            range.style.left = percent1 + '%';
+            range.style.width = (percent2 - percent1) + '%';
+
+            display.textContent = `$${homeMinPrice} - $${homeMaxPrice >= 2000 ? '2K+' : homeMaxPrice}`;
+        }
+
+        // Home page functions
+        async function loadHome() {
+            loadHotItems();
+            loadWatchlistPicks();
+        }
+
+        function refreshHome() {
+            loadHome();
+            showToast('Refreshing...');
+        }
+
+        async function loadHotItems() {
+            const container = document.getElementById('home-hot');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                // Get a few hot items from different categories
+                const queries = [
+                    'Mr Brainwash signed',
+                    'Shepard Fairey signed print',
+                    'signed pickguard COA',
+                    'signed vinyl COA',
+                    'Taylor Swift signed COA',
+                    'astronaut signed COA'
+                ];
+
+                const randomQuery = queries[Math.floor(Math.random() * queries.length)];
+                const resp = await fetch(`/api/search?q=${encodeURIComponent(randomQuery)}&min_price=${homeMinPrice}&max_price=${homeMaxPrice}`);
+                const deals = await resp.json();
+
+                if (deals.length === 0) {
+                    container.innerHTML = '<div class="empty">No items in this price range</div>';
+                    return;
+                }
+
+                // Show top 5
+                const top = deals.slice(0, 5);
+                container.innerHTML = top.map(deal => featuredItemHTML(deal, randomQuery)).join('');
+            } catch (e) {
+                container.innerHTML = '<div class="empty">Could not load hot items</div>';
+            }
+        }
+
+        async function loadWatchlistPicks() {
+            const container = document.getElementById('home-watchlist');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const resp = await fetch('/api/watchlist');
+                const items = await resp.json();
+
+                if (items.length === 0) {
+                    container.innerHTML = '<div class="empty">Add items to your watchlist</div>';
+                    return;
+                }
+
+                container.innerHTML = items.slice(0, 5).map(item => `
+                    <div class="item-row" onclick="goSearchFor('${item.title.replace(/'/g, "\\'")}')">
+                        <div class="item-info">
+                            <div class="item-title">${item.title}</div>
+                            <div class="item-meta">${item.notes || 'Tap to search'}</div>
+                        </div>
+                        <div class="item-price">
+                            <div class="amount">$${item.price}+</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                container.innerHTML = '<div class="empty">Could not load watchlist</div>';
+            }
+        }
+
+        function featuredItemHTML(deal, category) {
+            const dealData = encodeURIComponent(JSON.stringify(deal));
+            return `
+                <div class="item-row" onclick="showItemDetail(decodeURIComponent('${dealData}'), '${category || 'eBay'}')">
+                    <img src="${deal.image || ''}" class="item-image" onerror="this.style.display='none'">
+                    <div class="item-info">
+                        <div class="item-label">${category || 'eBay'}</div>
+                        <div class="item-title">${deal.title}</div>
+                        <div class="item-meta">${deal.seller || ''}</div>
+                    </div>
+                    <div class="item-price">
+                        <div class="amount">$${deal.price.toFixed(0)}</div>
+                        <div class="type">${deal.buying_option === 'AUCTION' ? 'auction' : 'buy now'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showItemDetail(dealJson, category) {
+            const deal = JSON.parse(dealJson);
+            document.getElementById('detail-image').src = deal.image || '';
+            document.getElementById('detail-image').style.display = deal.image ? 'block' : 'none';
+            document.getElementById('detail-category').textContent = category;
+            document.getElementById('detail-title').textContent = deal.title;
+            document.getElementById('detail-price').textContent = '$' + deal.price.toFixed(2);
+            document.getElementById('detail-meta').innerHTML = `
+                ${deal.seller ? `Seller: ${deal.seller}<br>` : ''}
+                ${deal.condition ? `Condition: ${deal.condition}<br>` : ''}
+                ${deal.buying_option === 'AUCTION' ? 'Auction' : 'Buy It Now'}
+            `;
+            document.getElementById('detail-ebay-link').href = deal.url;
+            document.getElementById('item-detail-modal').classList.add('show');
+        }
+
+        function closeItemDetail() {
+            document.getElementById('item-detail-modal').classList.remove('show');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('item-detail-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'item-detail-modal') closeItemDetail();
+        });
+
+        function goSearchFor(query) {
+            showPage('comps');
+            document.getElementById('search-input').value = query;
+            setTimeout(() => doSearch(), 100);
+        }
+
+        async function loadStats() {
+            try {
+                const resp = await fetch('/api/stats');
+                const data = await resp.json();
+                document.getElementById('stat-targets').textContent = data.targets || 0;
+            } catch (e) {}
+        }
+
+        // Price Range Sliders
+        function initSliders() {
+            const minSlider = document.getElementById('min-price');
+            const maxSlider = document.getElementById('max-price');
+
+            minSlider.addEventListener('input', () => {
+                minPrice = parseInt(minSlider.value);
+                if (minPrice >= maxPrice) {
+                    minPrice = maxPrice - 10;
+                    minSlider.value = minPrice;
+                }
+                updateSliderUI();
+            });
+
+            maxSlider.addEventListener('input', () => {
+                maxPrice = parseInt(maxSlider.value);
+                if (maxPrice <= minPrice) {
+                    maxPrice = minPrice + 10;
+                    maxSlider.value = maxPrice;
+                }
+                updateSliderUI();
+            });
+
+            updateSliderUI();
+        }
+
+        function updateSliderUI() {
+            const minSlider = document.getElementById('min-price');
+            const maxSlider = document.getElementById('max-price');
+            const range = document.getElementById('slider-range');
+            const display = document.getElementById('price-display');
+
+            const percent1 = (minPrice / 2000) * 100;
+            const percent2 = (maxPrice / 2000) * 100;
+
+            range.style.left = percent1 + '%';
+            range.style.width = (percent2 - percent1) + '%';
+
+            display.textContent = `$${minPrice} - $${maxPrice >= 2000 ? '2K+' : maxPrice}`;
+
+            // Update preset buttons
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+        }
+
+        function setPreset(min, max) {
+            minPrice = min;
+            maxPrice = max;
+            document.getElementById('min-price').value = min;
+            document.getElementById('max-price').value = max;
+            updateSliderUI();
+
+            // Update preset buttons
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                const btnText = btn.textContent;
+                if ((min === 25 && max === 150 && btnText.includes('150')) ||
+                    (min === 50 && max === 500 && btnText.includes('50-')) ||
+                    (min === 100 && max === 1000 && btnText.includes('100')) ||
+                    (min === 500 && max === 2000 && btnText.includes('500+'))) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => showPage(item.dataset.page));
+        });
+
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(`page-${page}`).classList.add('active');
+            document.querySelector(`[data-page="${page}"]`).classList.add('active');
+
+            if (page === 'home') loadHome();
+            if (page === 'watchlist') loadWatchlist();
+        }
+
+        // Category chips
+        document.querySelectorAll('#category-chips .chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('#category-chips .chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                currentCategory = chip.dataset.cat;
+            });
+        });
+
+        // Status chips
+        document.querySelectorAll('#status-chips .chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('#status-chips .chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                currentStatus = chip.dataset.status;
+                renderWatchlist();
+            });
+        });
+
+        // Quick search button
+        function quickSearch(query) {
+            document.getElementById('search-input').value = query;
+            doSearch();
+        }
+
+        // Main search function
+        function doSearch() {
+            const query = document.getElementById('search-input').value.trim();
+            if (query.length >= 2) {
+                customSearch(query);
+            } else {
+                showToast('Enter at least 2 characters');
+            }
+        }
+
+        // Search on Enter key
+        document.getElementById('search-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                doSearch();
+            }
+        });
+
+        async function customSearch(query) {
+            const resultsDiv = document.getElementById('comps-results');
+            const searchBtn = document.getElementById('search-btn');
+
+            searchBtn.disabled = true;
+            searchBtn.textContent = '...';
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Searching...</div>';
+
+            try {
+                const resp = await fetch(`/api/search?q=${encodeURIComponent(query)}&min_price=${minPrice}&max_price=${maxPrice}`);
+                const deals = await resp.json();
+                renderSearchResults(deals, query);
+                showToast(`Found ${deals.length} results`);
+            } catch (e) {
+                resultsDiv.innerHTML = '<div class="empty">Search failed - try again</div>';
+            }
+
+            searchBtn.disabled = false;
+            searchBtn.textContent = 'Go';
+        }
+
+        function renderSearchResults(deals, query) {
+            const container = document.getElementById('comps-results');
+            if (!deals.length) {
+                container.innerHTML = '<div class="empty">No results for "' + (query || 'search') + '"</div>';
+                return;
+            }
+            deals.forEach(d => { if (!d.search_query) d.search_query = query; });
+            container.innerHTML = deals.map(d => dealItemHTML(d)).join('');
+        }
+
+        async function scanComps() {
+            const btn = document.getElementById('scan-btn');
+            const resultsDiv = document.getElementById('comps-results');
+
+            btn.disabled = true;
+            btn.textContent = 'Scanning...';
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Scanning by artist...</div>';
+
+            try {
+                const resp = await fetch('/api/comps');
+                const data = await resp.json();
+                renderComps(data);
+
+                // Count total
+                let total = 0;
+                Object.values(data).forEach(arr => total += arr.length);
+                document.getElementById('stat-found').textContent = total;
+
+                showToast('Scan complete');
+            } catch (e) {
+                resultsDiv.innerHTML = '<div class="empty">Scan failed</div>';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Scan Comps by Artist';
+        }
+
+        function renderComps(data) {
+            const container = document.getElementById('comps-results');
+            const categories = Object.keys(data);
+
+            if (!categories.length) {
+                container.innerHTML = '<div class="empty">No comps found</div>';
+                return;
+            }
+
+            const filtered = currentCategory === 'all'
+                ? categories
+                : categories.filter(c => c.toLowerCase().includes(currentCategory));
+
+            container.innerHTML = filtered.map(cat => {
+                const deals = data[cat];
+                if (!deals.length) return '';
+
+                return `
+                    <div class="artist-group">
+                        <div class="artist-header">${cat} (${deals.length})</div>
+                        <div class="card">
+                            ${deals.map(d => dealItemHTML(d)).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function dealItemHTML(deal) {
+            const dealData = encodeURIComponent(JSON.stringify(deal));
+            return `
+                <div class="item-row" onclick="showItemDetail(decodeURIComponent('${dealData}'), '${deal.search_query || 'eBay'}')">
+                    <img src="${deal.image || ''}" class="item-image" onerror="this.style.display='none'">
+                    <div class="item-info">
+                        <div class="item-label">${deal.search_query || 'eBay'}</div>
+                        <div class="item-title">${deal.title}</div>
+                        <div class="item-meta">${deal.seller || ''}</div>
+                    </div>
+                    <div class="item-price">
+                        <div class="amount">$${deal.price.toFixed(0)}</div>
+                        <div class="type">${deal.buying_option === 'AUCTION' ? 'auction' : 'buy now'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // WATCHLIST
+        async function loadWatchlist() {
+            const container = document.getElementById('watchlist-results');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const resp = await fetch('/api/watchlist');
+                watchlistItems = await resp.json();
+                renderWatchlist();
+            } catch (e) {
+                container.innerHTML = '<div class="empty">Failed to load</div>';
+            }
+        }
+
+        function renderWatchlist() {
+            const container = document.getElementById('watchlist-results');
+
+            if (!watchlistItems.length) {
+                container.innerHTML = '<div class="empty">No items in watchlist</div>';
+                return;
+            }
+
+            container.innerHTML = watchlistItems.map(item => `
+                <div class="item-row">
+                    <div class="item-info" onclick="goSearchFor('${item.title.replace(/'/g, "\\'")}')">
+                        <div class="item-title">${item.title}</div>
+                        <div class="item-meta">${item.notes || ''}</div>
+                    </div>
+                    <div class="item-price">
+                        <div class="amount">$${item.price}+</div>
+                    </div>
+                    <button class="delete-btn" onclick="removeFromWatchlist('${item.id}')">×</button>
+                </div>
+            `).join('');
+        }
+
+        function showAddWatchModal() {
+            document.getElementById('add-watch-modal').classList.add('show');
+        }
+
+        function closeAddWatchModal() {
+            document.getElementById('add-watch-modal').classList.remove('show');
+            document.getElementById('watch-url').value = '';
+            document.getElementById('watch-title').value = '';
+            document.getElementById('watch-price').value = '';
+            document.getElementById('watch-notes').value = '';
+        }
+
+        document.getElementById('add-watch-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'add-watch-modal') closeAddWatchModal();
+        });
+
+        async function addToWatchlist() {
+            const urlOrId = document.getElementById('watch-url').value.trim();
+            const title = document.getElementById('watch-title').value.trim();
+            const price = parseFloat(document.getElementById('watch-price').value) || 0;
+            const notes = document.getElementById('watch-notes').value.trim();
+
+            if (!title) {
+                showToast('Please enter a title');
+                return;
+            }
+
+            let itemId = urlOrId;
+            if (urlOrId.includes('ebay.com')) {
+                const match = urlOrId.match(/itm\/(\d+)/);
+                if (match) itemId = match[1];
+            }
+
+            const url = itemId && !urlOrId.includes('http')
+                ? `https://www.ebay.com/itm/${itemId}`
+                : urlOrId;
+
+            try {
+                const resp = await fetch('/api/watchlist/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: itemId || Date.now().toString(),
+                        title, price, url, notes
+                    })
+                });
+
+                const data = await resp.json();
+                if (data.success) {
+                    showToast('Added to watchlist');
+                    closeAddWatchModal();
+                    loadWatchlist();
+                }
+            } catch (e) {
+                showToast('Failed to add');
+            }
+        }
+
+        async function removeFromWatchlist(itemId) {
+            try {
+                await fetch('/api/watchlist/remove', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: itemId })
+                });
+                showToast('Removed');
+                loadWatchlist();
+            } catch (e) {
+                showToast('Failed');
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+    </script>
+</body>
+</html>

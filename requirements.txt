@@ -1,6 +1,8 @@
+flask
 pandas
 openpyxl
 requests
 python-dotenv
 google-auth-oauthlib
 google-api-python-client
+google-auth
